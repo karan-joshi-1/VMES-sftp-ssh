@@ -9,6 +9,7 @@ import paramiko
 import os
 import sys
 import logging
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -37,6 +38,10 @@ class TerminalWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.username = self.get_query_argument("username", None)
         self.password = self.get_query_argument("password", None)
         
+        # Terminal dimensions - default to a wider terminal
+        self.term_cols = 100
+        self.term_rows = 24
+        
         # Check if we have all required parameters
         if not all([self.host, self.username, self.password]):
             error_msg = "Missing connection parameters. Need host, username, and password."
@@ -58,12 +63,16 @@ class TerminalWebSocketHandler(tornado.websocket.WebSocketHandler):
                 password=self.password
             )
             
-            # Open a channel for shell
-            self.channel = self.ssh.invoke_shell()
+            # Open a channel for shell with proper terminal type and size
+            self.channel = self.ssh.invoke_shell(
+                term="xterm-256color",
+                width=self.term_cols,
+                height=self.term_rows
+            )
             self.channel.settimeout(0.0)
             self.alive = True
             
-            logger.info(f"SSH connection established successfully")
+            logger.info(f"SSH connection established successfully with terminal size {self.term_cols}x{self.term_rows}")
             self.write_message("Connected to SSH server")
             
             # Start reading from SSH
@@ -78,7 +87,7 @@ class TerminalWebSocketHandler(tornado.websocket.WebSocketHandler):
         while self.alive:
             try:
                 if self.channel.recv_ready():
-                    data = self.channel.recv(1024)
+                    data = self.channel.recv(4096)  # Larger buffer for better performance
                     if not data:
                         logger.info("SSH channel closed")
                         break
@@ -94,9 +103,52 @@ class TerminalWebSocketHandler(tornado.websocket.WebSocketHandler):
             return
             
         try:
+            # Check if this is a resize message (JSON format)
+            if message.startswith('{') and message.endswith('}'):
+                try:
+                    msg_obj = json.loads(message)
+                    
+                    # Handle resize event
+                    if msg_obj.get('type') == 'resize':
+                        cols = int(msg_obj.get('cols', 100))
+                        rows = int(msg_obj.get('rows', 24))
+                        
+                        # Validate dimensions
+                        if 10 <= cols <= 500 and 5 <= rows <= 200:
+                            logger.info(f"Resizing terminal to {cols}x{rows}")
+                            self.term_cols = cols
+                            self.term_rows = rows
+                            self.channel.resize_pty(width=cols, height=rows)
+                        return
+                except Exception as e:
+                    logger.error(f"Error processing resize: {str(e)}")
+                    # Continue processing as normal message
+            
+            # Check for VT100 resize sequence: ESC[8;rows;colst
+            if isinstance(message, str) and message.startswith('\x1b[8;') and 't' in message:
+                try:
+                    # Parse resize sequence
+                    parts = message[4:].split(';')
+                    if len(parts) >= 2:
+                        rows = int(parts[0])
+                        cols = int(parts[1].split('t')[0])
+                        
+                        # Validate dimensions
+                        if 10 <= cols <= 500 and 5 <= rows <= 200:
+                            logger.info(f"Resizing terminal via VT100 sequence to {cols}x{rows}")
+                            self.term_cols = cols
+                            self.term_rows = rows
+                            self.channel.resize_pty(width=cols, height=rows)
+                        return
+                except Exception as e:
+                    logger.error(f"Error processing resize sequence: {str(e)}")
+                    # Continue processing as normal message
+            
+            # Normal message - forward to SSH
             if isinstance(message, str):
                 message = message.encode("utf-8")
             self.channel.send(message)
+            
         except Exception as e:
             logger.error(f"Error sending message: {str(e)}")
             self.write_message(f"ERROR: {str(e)}")
