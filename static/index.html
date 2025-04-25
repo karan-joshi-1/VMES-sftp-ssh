@@ -2,10 +2,10 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Local SFTP Client</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
@@ -40,7 +40,9 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+                Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
+                sans-serif;
             background-color: var(--bg-dark);
             color: var(--text-light);
             line-height: 1.5;
@@ -229,7 +231,7 @@
         }
 
         .path-display {
-            font-family: 'Roboto Mono', monospace;
+            font-family: "Roboto Mono", monospace;
             font-size: 0.875rem;
             padding: 0.5rem 0.75rem;
             background-color: var(--bg-light);
@@ -347,7 +349,7 @@
             border: 1px solid var(--border-light);
             border-radius: var(--radius);
             background-color: var(--bg-light);
-            font-family: 'Roboto Mono', monospace;
+            font-family: "Roboto Mono", monospace;
             font-size: 0.75rem;
             overflow-y: auto;
             color: var(--text-medium);
@@ -481,9 +483,9 @@
                         <input type="password" id="password" class="form-input" placeholder="Password"
                             value="karanVAC" />
                     </div>
-                    <div class="form-group" style="justify-content: flex-end;">
+                    <div class="form-group" style="justify-content: flex-end">
                         <button id="connectBtn" class="btn btn-primary">
-                            <div class="loader" style="display: none;"></div>
+                            <div class="loader" style="display: none"></div>
                             <span>
                                 <i class="fas fa-plug"></i>
                                 Connect
@@ -497,21 +499,21 @@
                         <div class="path-display" id="currentPath">/</div>
                         <div class="action-buttons">
                             <button id="upDirBtn" class="btn btn-secondary">
-                                <div class="loader" style="display: none;"></div>
+                                <div class="loader" style="display: none"></div>
                                 <span>
                                     <i class="fas fa-arrow-up"></i>
                                     Up
                                 </span>
                             </button>
                             <button id="newFolderBtn" class="btn btn-secondary">
-                                <div class="loader" style="display: none;"></div>
+                                <div class="loader" style="display: none"></div>
                                 <span>
                                     <i class="fas fa-folder-plus"></i>
                                     New Folder
                                 </span>
                             </button>
                             <button id="refreshBtn" class="btn btn-secondary">
-                                <div class="loader" style="display: none;"></div>
+                                <div class="loader" style="display: none"></div>
                                 <span>
                                     <i class="fas fa-sync-alt"></i>
                                     Refresh
@@ -544,7 +546,7 @@
                             <input type="file" id="fileUpload" class="upload-input" />
                         </div>
                         <button type="submit" class="btn btn-success" id="uploadBtn">
-                            <div class="loader" style="display: none;"></div>
+                            <div class="loader" style="display: none"></div>
                             <span>
                                 <i class="fas fa-upload"></i>
                                 Upload
@@ -553,14 +555,16 @@
                     </form>
                 </div>
 
-                <div id="terminal" style="margin-top: 1.5rem;">
+                <div id="terminal" style="margin-top: 1.5rem">
                     <h2 class="section-title">Terminal</h2>
-                    <button id="connectTerminalBtn" class="btn btn-primary" style="margin-bottom: 1rem;">
+                    <button id="connectTerminalBtn" class="btn btn-primary" style="margin-bottom: 1rem">
                         <i class="fas fa-terminal"></i> Connect Terminal
                     </button>
-                    <div id="terminalContainer"
-                        style="height: 300px; border: 1px solid var(--border-light); border-radius: var(--radius);">
-                    </div>
+                    <div id="terminalContainer" style="
+                height: 300px;
+                border: 1px solid var(--border-light);
+                border-radius: var(--radius);
+              "></div>
                 </div>
 
                 <div class="status-section">
@@ -660,16 +664,30 @@
 
         // Connect terminal to SSH server
         function connectTerminal() {
+            // Check if connected to a server
+            const connectBtn = document.getElementById('connectTerminalBtn');
+
+            // Prevent multiple connections - check if we're already connecting
+            if (connectBtn.disabled) {
+                return; // Already in progress
+            }
+
             if (!isConnected) {
                 showStatus("Please connect to a server first", "error");
+                updateTerminalStatus('error', 'Not connected to server');
                 return;
             }
 
-            // Close existing connection
-            if (termSocket) {
+            // If already connected, disconnect first
+            if (termSocket && termSocket.readyState === WebSocket.OPEN) {
+                showStatus("Already connected. Disconnecting first...", "");
                 termSocket.close();
                 termSocket = null;
+                return; // Exit and let the onclose handler trigger the reconnect
             }
+
+            // Disable the connect button during connection
+            connectBtn.disabled = true;
 
             // Make sure terminal is initialized
             if (!term) {
@@ -797,11 +815,11 @@
             if (isLoading) {
                 fileList.classList.add('loading');
                 fileList.innerHTML = `
-                    <div class="file-item" style="justify-content: center; padding: 2rem;">
-                        <div class="loader"></div>
-                        <span style="margin-left: 0.75rem;">Loading files...</span>
-                    </div>
-                `;
+                          <div class="file-item" style="justify-content: center; padding: 2rem;">
+                              <div class="loader"></div>
+                              <span style="margin-left: 0.75rem;">Loading files...</span>
+                          </div>
+                      `;
             } else {
                 fileList.classList.remove('loading');
             }
@@ -840,14 +858,14 @@
                     connectionInfo = result.data;
                     isConnected = true;
                     connectionStatus.innerHTML = `
-                        <i class="fas fa-check-circle"></i>
-                        <span>Connected to ${hostIp}</span>
-                    `;
+                <i class="fas fa-check-circle"></i>
+                <span>Connected to ${hostIp}</span>
+            `;
                     connectionStatus.className = 'connection-status connected';
                     showStatus(`Connected successfully to ${hostIp} as ${username}`, 'success');
 
-                    // Initialize file listing
-                    currentPath = '/';
+                    // Set initial path to /home/username
+                    currentPath = `/home/${username}`;
                     refreshFileList();
 
                     // Initialize terminal
@@ -860,6 +878,115 @@
                 }
             } catch (error) {
                 setButtonLoading(connectBtn, false);
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Restrict navigation to home directory
+        function navigateTo(path) {
+            // Extract username from the current path
+            const pathParts = currentPath.split('/');
+            const username = pathParts.length >= 3 ? pathParts[2] : '';
+            const homePath = `/home/${username}`;
+
+            // Check if the requested path starts with /home/username
+            if (!path.startsWith(homePath)) {
+                showStatus(`Access restricted to ${homePath}`, 'error');
+                return;
+            }
+
+            currentPath = path;
+            refreshFileList();
+        }
+
+        // Modified navigateUp function with home directory restriction
+        function navigateUp() {
+            // Extract username from the current path
+            const pathParts = currentPath.split('/');
+            const username = pathParts.length >= 3 ? pathParts[2] : '';
+            const homePath = `/home/${username}`;
+
+            // Don't allow navigating above /home/username
+            if (currentPath === homePath) {
+                showStatus(`Cannot navigate above ${homePath}`, 'error');
+                return;
+            }
+
+            setButtonLoading(upDirBtn, true);
+
+            const parts = currentPath.split('/').filter(p => p);
+            parts.pop();
+            let newPath = '/' + parts.join('/');
+
+            // Ensure we don't go above home directory
+            if (!newPath.startsWith(homePath)) {
+                newPath = homePath;
+            }
+
+            currentPath = newPath;
+
+            refreshFileList().then(() => {
+                setButtonLoading(upDirBtn, false);
+            }).catch(() => {
+                setButtonLoading(upDirBtn, false);
+            });
+        }
+
+        // Modified createNewFolder function
+        async function createNewFolder() {
+            if (!isConnected) {
+                showStatus('Not connected to any server', 'error');
+                return;
+            }
+
+            // Extract username from the current path
+            const pathParts = currentPath.split('/');
+            const username = pathParts.length >= 3 ? pathParts[2] : '';
+            const homePath = `/home/${username}`;
+
+            // Check if the current path is within home directory
+            if (!currentPath.startsWith(homePath)) {
+                showStatus(`Cannot create folders outside ${homePath}`, 'error');
+                return;
+            }
+
+            const folderName = prompt('Enter folder name:');
+            if (!folderName) return;
+
+            const newPath = currentPath === '/'
+                ? `/${folderName}`
+                : `${currentPath}/${folderName}`;
+
+            try {
+                // Show loading state
+                setButtonLoading(newFolderBtn, true);
+                showStatus(`Creating folder "${folderName}"...`, '');
+
+                const response = await fetch('/mkdir', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        hostIp: connectionInfo.hostIp,
+                        username: connectionInfo.username,
+                        path: newPath
+                    })
+                });
+
+                const result = await response.json();
+
+                // Hide loading state
+                setButtonLoading(newFolderBtn, false);
+
+                if (result.status) {
+                    showStatus(`Folder "${folderName}" created successfully`, 'success');
+                    refreshFileList();
+                } else {
+                    showStatus(`Failed to create folder: ${result.msg}`, 'error');
+                }
+            } catch (error) {
+                setButtonLoading(newFolderBtn, false);
                 showStatus(`Error: ${error.message}`, 'error');
             }
         }
@@ -953,13 +1080,13 @@
 
             if (files.length === 0) {
                 fileList.innerHTML = `
-                    <div class="file-item">
-                        <div class="file-info">
-                            <i class="fas fa-info-circle file-icon"></i>
-                            <span class="file-name">Empty directory</span>
-                        </div>
-                    </div>
-                `;
+                          <div class="file-item">
+                              <div class="file-info">
+                                  <i class="fas fa-info-circle file-icon"></i>
+                                  <span class="file-name">Empty directory</span>
+                              </div>
+                          </div>
+                      `;
                 return;
             }
 
@@ -984,24 +1111,24 @@
                 }
 
                 const fileHtml = `
-                    <div class="file-info">
-                        <i class="fas ${fileIcon} file-icon"></i>
-                        <div class="file-details">
-                            <span class="file-name">${file.name}</span>
-                            ${file.type === 'file' ? `<span class="file-meta">${fileSize} • ${file.mTime}</span>` : ''}
-                        </div>
-                    </div>
-                    <div class="item-actions">
-                        ${file.type === 'file' ? `
-                            <button class="btn btn-secondary download-btn">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        ` : ''}
-                        <button class="btn btn-danger delete-btn">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-                `;
+                          <div class="file-info">
+                              <i class="fas ${fileIcon} file-icon"></i>
+                              <div class="file-details">
+                                  <span class="file-name">${file.name}</span>
+                                  ${file.type === 'file' ? `<span class="file-meta">${fileSize} • ${file.mTime}</span>` : ''}
+                              </div>
+                          </div>
+                          <div class="item-actions">
+                              ${file.type === 'file' ? `
+                                  <button class="btn btn-secondary download-btn">
+                                      <i class="fas fa-download"></i>
+                                  </button>
+                              ` : ''}
+                              <button class="btn btn-danger delete-btn">
+                                  <i class="fas fa-trash-alt"></i>
+                              </button>
+                          </div>
+                      `;
 
                 fileItem.innerHTML = fileHtml;
 
