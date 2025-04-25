@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +18,7 @@
             --danger: #ef4444;
             --warning: #f59e0b;
             --bg-dark: #111827;
-            --bg-medium: #1f2937; 
+            --bg-medium: #1f2937;
             --bg-light: #374151;
             --text-light: #f9fafb;
             --text-medium: #e5e7eb;
@@ -82,7 +83,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .loading {
@@ -449,6 +452,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="card">
@@ -459,20 +463,23 @@
                     <span>Not connected</span>
                 </div>
             </div>
-            
+
             <div class="card-body">
                 <div class="connection-form">
                     <div class="form-group">
                         <label for="hostIp" class="form-label">Host Address</label>
-                        <input type="text" id="hostIp" class="form-input" placeholder="hostname or IP (e.g., 192.168.1.1:22)" value="10.250.0.22" />
+                        <input type="text" id="hostIp" class="form-input"
+                            placeholder="hostname or IP (e.g., 192.168.1.1:22)" value="10.220.120.17" />
                     </div>
                     <div class="form-group">
                         <label for="username" class="form-label">Username</label>
-                        <input type="text" id="username" class="form-input" placeholder="Username" value="kjoshi" />
+                        <input type="text" id="username" class="form-input" placeholder="Username"
+                            value="karan-connect" />
                     </div>
                     <div class="form-group">
                         <label for="password" class="form-label">Password</label>
-                        <input type="password" id="password" class="form-input" placeholder="Password" value="QuaeX_eeba" />
+                        <input type="password" id="password" class="form-input" placeholder="Password"
+                            value="karanVAC" />
                     </div>
                     <div class="form-group" style="justify-content: flex-end;">
                         <button id="connectBtn" class="btn btn-primary">
@@ -484,7 +491,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="filesystem-section">
                     <div class="filesystem-header">
                         <div class="path-display" id="currentPath">/</div>
@@ -512,12 +519,12 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="directory-info">
                         <i class="fas fa-info-circle"></i>
                         <span id="dirStats">Connect to a server to browse files</span>
                     </div>
-                    
+
                     <div class="file-explorer">
                         <div class="file-list" id="fileList">
                             <div class="file-item">
@@ -529,7 +536,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="upload-section">
                     <h2 class="section-title">Upload File</h2>
                     <form id="uploadForm" class="upload-form">
@@ -551,9 +558,11 @@
                     <button id="connectTerminalBtn" class="btn btn-primary" style="margin-bottom: 1rem;">
                         <i class="fas fa-terminal"></i> Connect Terminal
                     </button>
-                    <div id="terminalContainer" style="height: 300px; border: 1px solid var(--border-light); border-radius: var(--radius);"></div>
+                    <div id="terminalContainer"
+                        style="height: 300px; border: 1px solid var(--border-light); border-radius: var(--radius);">
+                    </div>
                 </div>
-                
+
                 <div class="status-section">
                     <h2 class="section-title">Status Log</h2>
                     <div class="status-area" id="statusArea">
@@ -572,7 +581,7 @@
         let term = null;
         let fitAddon = null;
         let termSocket = null;
-        
+
         // DOM elements
         const connectBtn = document.getElementById('connectBtn');
         const upDirBtn = document.getElementById('upDirBtn');
@@ -586,7 +595,7 @@
         const statusArea = document.getElementById('statusArea');
         const dirStats = document.getElementById('dirStats');
         const connectTerminalBtn = document.getElementById('connectTerminalBtn');
-        
+
         // Event listeners
         connectBtn.addEventListener('click', connect);
         upDirBtn.addEventListener('click', navigateUp);
@@ -594,11 +603,11 @@
         refreshBtn.addEventListener('click', refreshFileList);
         uploadForm.addEventListener('submit', uploadFile);
         connectTerminalBtn.addEventListener('click', connectTerminal);
-        
+
         // Initialize terminal
         function initTerminal() {
             if (!term) {
-                // Create a new terminal instance
+                // Create a new terminal instance with improved settings
                 term = new Terminal({
                     cursorBlink: true,
                     theme: {
@@ -606,50 +615,72 @@
                         foreground: 'var(--text-light)'
                     },
                     fontFamily: '"Roboto Mono", monospace',
-                    fontSize: 14
+                    fontSize: 14,
+                    lineHeight: 1.2,            // Better line spacing
+                    cols: 100,                  // Wider default size to reduce wrapping
+                    rows: 24,                   // Standard terminal height
+                    scrollback: 1000,           // More scrollback
+                    rendererType: 'canvas',     // Better rendering
+                    allowTransparency: false,   // Improves performance
+                    convertEol: true            // Convert line feed characters to CRLF
                 });
-                
+
                 // Load the fit addon
                 fitAddon = new FitAddon.FitAddon();
                 term.loadAddon(fitAddon);
-                
+
                 // Open terminal in the container
                 term.open(document.getElementById('terminalContainer'));
-                fitAddon.fit();
-                
-                // Handle window resize
-                window.addEventListener('resize', () => {
+
+                // Initial sizing - important for proper display
+                setTimeout(() => {
                     fitAddon.fit();
+                    console.log(`Terminal sized to ${term.cols}x${term.rows}`);
+                }, 100);
+
+                // Handle window resize with debouncing for better performance
+                let resizeTimeout;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        fitAddon.fit();
+                        // Send size to server (handled in onResize event)
+                    }, 100);
                 });
-                
+
                 // Initial terminal message
                 term.write("Terminal ready. Click 'Connect Terminal' to start a session.\r\n");
+
+                // Add click event to focus terminal
+                document.getElementById('terminalContainer').addEventListener('click', () => {
+                    term.focus();
+                });
             }
         }
-        
+
         // Connect terminal to SSH server
         function connectTerminal() {
             if (!isConnected) {
                 showStatus("Please connect to a server first", "error");
                 return;
             }
-            
+
             // Close existing connection
             if (termSocket) {
                 termSocket.close();
                 termSocket = null;
             }
-            
+
             // Make sure terminal is initialized
             if (!term) {
                 initTerminal();
             } else {
                 term.clear();
             }
-            
+
             // Write connecting message
             term.write("Connecting to SSH server...\r\n");
-            
+
             // Get host and port from the connection info
             let host, port;
             if (connectionInfo.hostIp.includes(':')) {
@@ -658,27 +689,36 @@
                 host = connectionInfo.hostIp;
                 port = 22;
             }
-            
+
             // Get credentials
             const username = connectionInfo.username;
             const password = document.getElementById('password').value;
-            
+
             // Create WebSocket URL with credentials
             const wsUrl = `ws://${window.location.hostname}:8888/terminal?host=${encodeURIComponent(host)}&port=${encodeURIComponent(port)}&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
-            
+
             try {
                 showStatus(`Connecting terminal to ${host}:${port} as ${username}...`, '');
-                
+
                 // Create WebSocket connection
                 termSocket = new WebSocket(wsUrl);
                 termSocket.binaryType = 'arraybuffer';
-                
+
                 // Handle WebSocket events
                 termSocket.onopen = () => {
                     showStatus("Terminal connected successfully", "success");
                     term.write("\r\n\x1B[1;32mConnected to SSH server\x1B[0m\r\n");
+
+                    // Send initial terminal size
+                    sendTerminalSize(term.cols, term.rows);
+
+                    // Perform an initial fit after connection
+                    setTimeout(() => {
+                        fitAddon.fit();
+                        sendTerminalSize(term.cols, term.rows);
+                    }, 500);
                 };
-                
+
                 termSocket.onmessage = (event) => {
                     // Convert binary data to string if needed
                     const data = typeof event.data === 'string'
@@ -686,45 +726,61 @@
                         : new TextDecoder().decode(event.data);
                     term.write(data);
                 };
-                
+
                 termSocket.onerror = (error) => {
                     console.error("Terminal WebSocket error:", error);
                     showStatus("Terminal connection error", "error");
                     term.write("\r\n\x1B[1;31mConnection error\x1B[0m\r\n");
                 };
-                
+
                 termSocket.onclose = () => {
                     showStatus("Terminal connection closed", "error");
                     term.write("\r\n\x1B[1;31mConnection closed\x1B[0m\r\n");
                     termSocket = null;
                 };
-                
+
                 // Forward terminal input to SSH server
                 term.onData((data) => {
                     if (termSocket && termSocket.readyState === WebSocket.OPEN) {
                         termSocket.send(data);
                     }
                 });
-                
-                // Handle terminal resize
+
+                // Handle terminal resize and send updated dimensions to server
                 term.onResize(({ cols, rows }) => {
-                    if (termSocket && termSocket.readyState === WebSocket.OPEN) {
-                        // We could send resize command here if the server supports it
-                        console.log(`Terminal resized to ${cols}x${rows}`);
-                    }
+                    sendTerminalSize(cols, rows);
                 });
+
             } catch (error) {
                 console.error("Error connecting terminal:", error);
                 showStatus(`Terminal connection failed: ${error.message}`, "error");
                 term.write(`\r\n\x1B[1;31mConnection error: ${error.message}\x1B[0m\r\n`);
             }
         }
-        
+
+        // Send terminal size to the server
+        function sendTerminalSize(cols, rows) {
+            if (termSocket && termSocket.readyState === WebSocket.OPEN) {
+                console.log(`Sending terminal size: ${cols}x${rows}`);
+
+                // Send resize information as JSON
+                try {
+                    termSocket.send(JSON.stringify({
+                        type: 'resize',
+                        cols: cols,
+                        rows: rows
+                    }));
+                } catch (e) {
+                    console.error("Error sending terminal resize info:", e);
+                }
+            }
+        }
+
         // Utility function to show a button is loading
         function setButtonLoading(button, isLoading) {
             const loader = button.querySelector('.loader');
             const span = button.querySelector('span');
-            
+
             if (isLoading) {
                 loader.style.display = 'inline-block';
                 button.classList.add('loading-button');
@@ -735,7 +791,7 @@
                 span.style.visibility = 'visible';
             }
         }
-        
+
         // Show loading overlay for the file list
         function setFileListLoading(isLoading) {
             if (isLoading) {
@@ -750,7 +806,7 @@
                 fileList.classList.remove('loading');
             }
         }
-        
+
         // Connect to server
         async function connect() {
             const hostIp = document.getElementById('hostIp').value;
@@ -761,12 +817,12 @@
                 showStatus('Please fill in all connection fields', 'error');
                 return;
             }
-            
+
             try {
                 // Show loading state
                 setButtonLoading(connectBtn, true);
                 showStatus(`Attempting to connect to ${hostIp} as ${username}...`, '');
-                
+
                 const response = await fetch('/login', {
                     method: 'POST',
                     headers: {
@@ -774,12 +830,12 @@
                     },
                     body: JSON.stringify({ hostIp, username, password })
                 });
-                
+
                 const result = await response.json();
-                
+
                 // Hide loading state
                 setButtonLoading(connectBtn, false);
-                
+
                 if (result.status) {
                     connectionInfo = result.data;
                     isConnected = true;
@@ -789,14 +845,14 @@
                     `;
                     connectionStatus.className = 'connection-status connected';
                     showStatus(`Connected successfully to ${hostIp} as ${username}`, 'success');
-                    
+
                     // Initialize file listing
                     currentPath = '/';
                     refreshFileList();
-                    
+
                     // Initialize terminal
                     initTerminal();
-                    
+
                     // Fetch disk usage
                     fetchDiskUsage();
                 } else {
@@ -807,20 +863,20 @@
                 showStatus(`Error: ${error.message}`, 'error');
             }
         }
-        
+
         // Get file listing
         async function refreshFileList() {
             if (!isConnected) {
                 showStatus('Not connected to any server', 'error');
                 return;
             }
-            
+
             try {
                 // Show loading state
                 setButtonLoading(refreshBtn, true);
                 setFileListLoading(true);
                 showStatus(`Loading files from ${currentPath}...`, '');
-                
+
                 const response = await fetch('/listFiles', {
                     method: 'POST',
                     headers: {
@@ -832,13 +888,13 @@
                         location: currentPath
                     })
                 });
-                
+
                 const result = await response.json();
-                
+
                 // Hide loading state
                 setButtonLoading(refreshBtn, false);
                 setFileListLoading(false);
-                
+
                 if (result.status) {
                     displayFiles(result.data);
                     currentPathDisplay.textContent = currentPath;
@@ -853,19 +909,19 @@
                 showStatus(`Error: ${error.message}`, 'error');
             }
         }
-        
+
         // Update directory statistics
         function updateDirectoryStats(files) {
             const dirs = files.filter(f => f.type === 'dir').length;
             const filesCount = files.filter(f => f.type === 'file').length;
-            
+
             dirStats.textContent = `${dirs} ${dirs === 1 ? 'directory' : 'directories'}, ${filesCount} ${filesCount === 1 ? 'file' : 'files'}`;
         }
-        
+
         // Fetch disk usage information
         async function fetchDiskUsage() {
             if (!isConnected) return;
-            
+
             try {
                 const response = await fetch('/getDf', {
                     method: 'POST',
@@ -878,9 +934,9 @@
                         path: '/'
                     })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.status) {
                     showStatus(`Disk usage information retrieved`, 'success');
                 } else {
@@ -890,11 +946,11 @@
                 console.error('Error fetching disk usage:', error);
             }
         }
-        
+
         // Display files in the file list
         function displayFiles(files) {
             fileList.innerHTML = '';
-            
+
             if (files.length === 0) {
                 fileList.innerHTML = `
                     <div class="file-item">
@@ -906,27 +962,27 @@
                 `;
                 return;
             }
-            
+
             // Sort: directories first, then files alphabetically
             files.sort((a, b) => {
                 if (a.type === 'dir' && b.type !== 'dir') return -1;
                 if (a.type !== 'dir' && b.type === 'dir') return 1;
                 return a.name.localeCompare(b.name);
             });
-            
+
             files.forEach(file => {
                 const fileItem = document.createElement('div');
                 fileItem.className = `file-item ${file.type}`;
-                
+
                 let fileIcon, fileSize;
-                
+
                 if (file.type === 'dir') {
                     fileIcon = 'fa-folder';
                 } else {
                     fileIcon = getFileIcon(file.name);
                     fileSize = formatFileSize(file.size);
                 }
-                
+
                 const fileHtml = `
                     <div class="file-info">
                         <i class="fas ${fileIcon} file-icon"></i>
@@ -946,33 +1002,33 @@
                         </button>
                     </div>
                 `;
-                
+
                 fileItem.innerHTML = fileHtml;
-                
+
                 if (file.type === 'dir') {
                     fileItem.querySelector('.file-info').addEventListener('click', () => navigateTo(file.path));
                 }
-                
+
                 if (file.type === 'file') {
                     fileItem.querySelector('.download-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
                         downloadFile(file.path);
                     });
                 }
-                
+
                 fileItem.querySelector('.delete-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
                     deleteFile(file.path);
                 });
-                
+
                 fileList.appendChild(fileItem);
             });
         }
-        
+
         // Get appropriate icon for file type
         function getFileIcon(fileName) {
             const extension = fileName.split('.').pop().toLowerCase();
-            
+
             const iconMap = {
                 'txt': 'fa-file-alt',
                 'pdf': 'fa-file-pdf',
@@ -1005,63 +1061,63 @@
                 'avi': 'fa-file-video',
                 'mov': 'fa-file-video'
             };
-            
+
             return iconMap[extension] || 'fa-file';
         }
-        
+
         // Format file size
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 B';
-            
+
             const k = 1024;
             const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
-            
+
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
-        
+
         // Navigate to a directory
         function navigateTo(path) {
             currentPath = path;
             refreshFileList();
         }
-        
+
         // Navigate up one directory
         function navigateUp() {
             if (currentPath === '/') return;
-            
+
             setButtonLoading(upDirBtn, true);
-            
+
             const parts = currentPath.split('/').filter(p => p);
             parts.pop();
             currentPath = '/' + parts.join('/');
-            
+
             refreshFileList().then(() => {
                 setButtonLoading(upDirBtn, false);
             }).catch(() => {
                 setButtonLoading(upDirBtn, false);
             });
         }
-        
+
         // Create a new folder
         async function createNewFolder() {
             if (!isConnected) {
                 showStatus('Not connected to any server', 'error');
                 return;
             }
-            
+
             const folderName = prompt('Enter folder name:');
             if (!folderName) return;
-            
-            const newPath = currentPath === '/' 
+
+            const newPath = currentPath === '/'
                 ? `/${folderName}`
                 : `${currentPath}/${folderName}`;
-            
+
             try {
                 // Show loading state
                 setButtonLoading(newFolderBtn, true);
                 showStatus(`Creating folder "${folderName}"...`, '');
-                
+
                 const response = await fetch('/mkdir', {
                     method: 'POST',
                     headers: {
@@ -1073,12 +1129,12 @@
                         path: newPath
                     })
                 });
-                
+
                 const result = await response.json();
-                
+
                 // Hide loading state
                 setButtonLoading(newFolderBtn, false);
-                
+
                 if (result.status) {
                     showStatus(`Folder "${folderName}" created successfully`, 'success');
                     refreshFileList();
@@ -1090,31 +1146,31 @@
                 showStatus(`Error: ${error.message}`, 'error');
             }
         }
-        
+
         // Download a file
         async function downloadFile(path) {
             if (!isConnected) {
                 showStatus('Not connected to any server', 'error');
                 return;
             }
-            
+
             // Extract filename from path
             const filename = path.split('/').pop();
-            
+
             // Create a download button element to show loading state
             const downloadBtn = event.currentTarget;
             const originalHTML = downloadBtn.innerHTML;
             downloadBtn.innerHTML = '<div class="loader"></div>';
             downloadBtn.disabled = true;
-            
+
             showStatus(`Downloading ${filename}...`, '');
-            
+
             const downloadParams = {
                 hostIp: connectionInfo.hostIp,
                 username: connectionInfo.username,
                 remotePath: path
             };
-            
+
             try {
                 const response = await fetch('/getFile', {
                     method: 'POST',
@@ -1123,11 +1179,11 @@
                     },
                     body: JSON.stringify(downloadParams)
                 });
-                
+
                 // Restore button
                 downloadBtn.innerHTML = originalHTML;
                 downloadBtn.disabled = false;
-                
+
                 if (response.ok) {
                     // Create a temporary link to download the file
                     const blob = await response.blob();
@@ -1139,7 +1195,7 @@
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
-                    
+
                     showStatus(`Downloaded ${filename} successfully`, 'success');
                 } else {
                     const data = await response.json();
@@ -1149,31 +1205,31 @@
                 // Restore button
                 downloadBtn.innerHTML = originalHTML;
                 downloadBtn.disabled = false;
-                
+
                 showStatus(`Error: ${error.message}`, 'error');
             }
         }
-        
+
         // Delete a file or directory
         async function deleteFile(path) {
             if (!isConnected) {
                 showStatus('Not connected to any server', 'error');
                 return;
             }
-            
+
             if (!confirm(`Are you sure you want to delete "${path}"?`)) {
                 return;
             }
-            
+
             // Get the delete button
             const deleteBtn = event.currentTarget;
             const originalHTML = deleteBtn.innerHTML;
             deleteBtn.innerHTML = '<div class="loader"></div>';
             deleteBtn.disabled = true;
-            
+
             try {
                 showStatus(`Deleting ${path}...`, '');
-                
+
                 const response = await fetch('/remove', {
                     method: 'POST',
                     headers: {
@@ -1185,13 +1241,13 @@
                         path: path
                     })
                 });
-                
+
                 // Restore button
                 deleteBtn.innerHTML = originalHTML;
                 deleteBtn.disabled = false;
-                
+
                 const result = await response.json();
-                
+
                 if (result.status) {
                     showStatus(`Deleted ${path} successfully`, 'success');
                     refreshFileList();
@@ -1202,41 +1258,41 @@
                 // Restore button
                 deleteBtn.innerHTML = originalHTML;
                 deleteBtn.disabled = false;
-                
+
                 showStatus(`Error: ${error.message}`, 'error');
             }
         }
-        
+
         // Upload a file
         async function uploadFile(e) {
             e.preventDefault();
-            
+
             if (!isConnected) {
                 showStatus('Not connected to any server', 'error');
                 return;
             }
-            
+
             const fileInput = document.getElementById('fileUpload');
             if (!fileInput.files.length) {
                 showStatus('Please select a file to upload', 'error');
                 return;
             }
-            
+
             const file = fileInput.files[0];
             const formData = new FormData();
             formData.append('file', file);
-            
+
             try {
                 // Show loading state
                 setButtonLoading(uploadBtn, true);
                 showStatus(`Uploading ${file.name} to ${currentPath}...`, '');
-                
+
                 const uploadParams = {
                     hostIp: connectionInfo.hostIp,
                     username: connectionInfo.username,
                     location: currentPath
                 };
-                
+
                 const response = await fetch('/uploadfile', {
                     method: 'POST',
                     headers: {
@@ -1245,12 +1301,12 @@
                     },
                     body: formData
                 });
-                
+
                 const result = await response.json();
-                
+
                 // Hide loading state
                 setButtonLoading(uploadBtn, false);
-                
+
                 if (result.status) {
                     showStatus(`Uploaded ${file.name} successfully`, 'success');
                     refreshFileList();
@@ -1261,17 +1317,17 @@
                 setButtonLoading(uploadBtn, false);
                 showStatus(`Error: ${error.message}`, 'error');
             }
-            
+
             // Reset file input
             fileInput.value = '';
         }
-        
+
         // Show status message
         function showStatus(message, type = '') {
             const statusArea = document.getElementById('statusArea');
             const statusMsg = document.createElement('p');
             statusMsg.textContent = message;
-            
+
             if (type === 'success') {
                 statusMsg.className = 'success-message';
                 statusMsg.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
@@ -1279,10 +1335,10 @@
                 statusMsg.className = 'error-message';
                 statusMsg.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
             }
-            
+
             statusArea.appendChild(statusMsg);
             statusArea.scrollTop = statusArea.scrollHeight;
-            
+
             // Also log to console for debugging
             if (type === 'error') {
                 console.error(message);
@@ -1294,4 +1350,5 @@
         }
     </script>
 </body>
+
 </html>
